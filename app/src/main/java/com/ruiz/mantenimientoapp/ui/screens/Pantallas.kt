@@ -1,32 +1,40 @@
 package com.ruiz.mantenimientoapp.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import com.ruiz.mantenimientoapp.data.network.VehiculoDto
-import com.ruiz.mantenimientoapp.ui.viewmodel.GarageUiState
-import com.ruiz.mantenimientoapp.ui.viewmodel.DetalleUiState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.ruiz.mantenimientoapp.data.network.VehiculoDto
 import com.ruiz.mantenimientoapp.data.network.MantenimientoDto
 import com.ruiz.mantenimientoapp.data.network.NetworkClient
+import com.ruiz.mantenimientoapp.ui.viewmodel.GarageUiState
+import com.ruiz.mantenimientoapp.ui.viewmodel.DetalleUiState
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+// --- PALETA DE COLORES AUTOMOTRIZ PREMIUM ---
+val FondoGaráz = Color(0xFF121214)
+val TarjetaGaráz = Color(0xFF1E1E22)
+val AzulDeportivo = Color(0xFF007AFF)
+val NaranjaRacing = Color(0xFFFF9500)
+val TextoBlanco = Color(0xFFF5F5F7)
+val TextoGris = Color(0xFF8E8E93)
+val VerdeIndicador = Color(0xFF34C759)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GarageScreen(
     uiState: GarageUiState,
@@ -35,34 +43,34 @@ fun GarageScreen(
 ) {
     Scaffold(
         topBar = {
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Mi Garaje", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            }
-        }
+            CenterAlignedTopAppBar(
+                title = { Text("MI GARAJE", fontWeight = FontWeight.Black, letterSpacing = 2.sp, color = TextoBlanco) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = FondoGaráz)
+            )
+        },
+        containerColor = FondoGaráz
     ) { paddingValues ->
         Box(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
             contentAlignment = Alignment.Center
         ) {
             when (uiState) {
-                is GarageUiState.Loading -> { CircularProgressIndicator() }
+                is GarageUiState.Loading -> { CircularProgressIndicator(color = AzulDeportivo) }
                 is GarageUiState.Error -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = uiState.mensaje, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
-                        Button(onClick = onRetry) { Text("Reintentar") }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+                        Text(text = uiState.mensaje, color = Color(0xFFFF3B30), textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 16.dp))
+                        Button(onClick = onRetry, colors = ButtonDefaults.buttonColors(containerColor = AzulDeportivo)) { Text("Reintentar Conexión") }
                     }
                 }
                 is GarageUiState.Success -> {
                     if (uiState.vehiculos.isEmpty()) {
-                        Text("No hay vehículos registrados.")
+                        Text("No hay vehículos en el garaje.", color = TextoGris)
                     } else {
                         LazyColumn(
-                            modifier = Modifier.fillMaxSize().padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
+                            item { Spacer(modifier = Modifier.height(8.dp)) }
                             items(uiState.vehiculos) { vehiculo ->
                                 VehiculoCard(vehiculo = vehiculo, onClick = { onNavigateToDetalles(vehiculo.id) })
                             }
@@ -76,22 +84,49 @@ fun GarageScreen(
 
 @Composable
 fun VehiculoCard(vehiculo: VehiculoDto, onClick: () -> Unit) {
+    val esMoto = vehiculo.tipo.contains("Moto", ignoreCase = true)
+    val colorAcento = if (esMoto) NaranjaRacing else AzulDeportivo
+
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = TarjetaGaráz),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = "${vehiculo.marca} ${vehiculo.modelo}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "Tipo: ${vehiculo.tipo}", style = MaterialTheme.typography.bodyMedium)
-                Text(text = "${vehiculo.kilometrajeActual} km", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            Box(
+                modifier = Modifier.fillMaxHeight().width(6.dp).background(colorAcento)
+            )
+
+            Column(modifier = Modifier.padding(16.dp).weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = vehiculo.marca.uppercase(), style = MaterialTheme.typography.labelMedium, color = colorAcento, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Surface(
+                        color = colorAcento.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(text = vehiculo.tipo, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = colorAcento, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Text(text = vehiculo.modelo, style = MaterialTheme.typography.titleLarge, color = TextoBlanco, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 4.dp))
+
+                HorizontalDivider(color = Color.White.copy(alpha = 0.05f), modifier = Modifier.padding(vertical = 8.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "ODÓMETRO", style = MaterialTheme.typography.bodySmall, color = TextoGris, fontWeight = FontWeight.Bold)
+                    Text(text = "${vehiculo.kilometrajeActual} KM", style = MaterialTheme.typography.bodyMedium, color = TextoBlanco, fontWeight = FontWeight.Black)
+                }
             }
         }
     }
 }
 
-// --- PANTALLA 2: DETALLES DEL VEHÍCULO ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleScreen(
     vehiculoId: String,
@@ -99,40 +134,74 @@ fun DetalleScreen(
     onLoadData: () -> Unit,
     onNavigateToHistorial: () -> Unit
 ) {
-    // Forzamos la carga de datos cuando se abre la pantalla
     LaunchedEffect(vehiculoId) {
         onLoadData()
     }
 
     Scaffold(
-        topBar = { Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Ficha Técnica", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) } }
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("FICHA TÉCNICA", fontWeight = FontWeight.Black, letterSpacing = 1.5.sp, color = TextoBlanco) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = FondoGaráz)
+            )
+        },
+        containerColor = FondoGaráz
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
             when (uiState) {
-                is DetalleUiState.Loading -> CircularProgressIndicator()
-                is DetalleUiState.Error -> Text(uiState.mensaje, color = MaterialTheme.colorScheme.error)
+                is DetalleUiState.Loading -> CircularProgressIndicator(color = AzulDeportivo)
+                is DetalleUiState.Error -> Text(uiState.mensaje, color = Color(0xFFFF3B30))
                 is DetalleUiState.Success -> {
                     val v = uiState.vehiculo
-                    Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("${v.marca} ${v.modelo}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                                Text("Categoría: ${v.tipo}", style = MaterialTheme.typography.bodyLarge)
+                    val esMoto = v.tipo.contains("Moto", ignoreCase = true)
+                    val colorAcento = if (esMoto) NaranjaRacing else AzulDeportivo
+
+                    Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = TarjetaGaráz)) {
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                Text(v.marca.uppercase(), color = colorAcento, fontWeight = FontWeight.Black, letterSpacing = 1.sp, style = MaterialTheme.typography.labelLarge)
+                                Text(v.modelo, style = MaterialTheme.typography.headlineLarge, color = TextoBlanco, fontWeight = FontWeight.Bold)
                             }
                         }
 
-                        // Detalles específicos simulando manual técnico
-                        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Especificaciones de Referencia:", fontWeight = FontWeight.Bold)
-                                Text("• Odómetro Actual: ${v.kilometrajeActual} km")
-                                Text("• Estado General: Óptimo")
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F0F11))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("DISTANCIA TOTAL RECORRIDA", color = TextoGris, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = String.format("%,d KM", v.kilometrajeActual),
+                                    style = MaterialTheme.typography.displaySmall,
+                                    color = colorAcento,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+                        }
+
+                        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = TarjetaGaráz)) {
+                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.size(12.dp).background(VerdeIndicador, RoundedCornerShape(6.dp)))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text("ESTADO DEL MOTOR", color = TextoGris, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                    Text("Sistemas en condiciones óptimas", color = TextoBlanco, fontWeight = FontWeight.SemiBold)
+                                }
                             }
                         }
 
                         Spacer(modifier = Modifier.weight(1f))
-                        Button(onClick = onNavigateToHistorial, modifier = Modifier.fillMaxWidth()) {
-                            Text("Ver Historial de Mantenimientos (${uiState.mantenimientos.size})")
+
+                        Button(
+                            onClick = onNavigateToHistorial,
+                            modifier = Modifier.fillMaxWidth().height(54.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = colorAcento)
+                        ) {
+                            Text("VER BITÁCORA DE SERVICIOS (${uiState.mantenimientos.size})", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         }
                     }
                 }
@@ -141,41 +210,68 @@ fun DetalleScreen(
     }
 }
 
-// --- PANTALLA 3: HISTORIAL DE SERVICIOS ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistorialScreen(
     uiState: DetalleUiState,
     onNavigateToAgregar: () -> Unit
 ) {
     Scaffold(
-        topBar = { Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Historial de Servicios", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) } }
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("HISTORIAL DE SERVICIOS", fontWeight = FontWeight.Black, letterSpacing = 1.sp, color = TextoBlanco) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = FondoGaráz)
+            )
+        },
+        containerColor = FondoGaráz
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             when (uiState) {
-                is DetalleUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                is DetalleUiState.Error -> Text(uiState.mensaje, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+                is DetalleUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = AzulDeportivo)
+                is DetalleUiState.Error -> Text(uiState.mensaje, color = Color(0xFFFF3B30), modifier = Modifier.align(Alignment.Center))
                 is DetalleUiState.Success -> {
+                    val esMoto = uiState.vehiculo.tipo.contains("Moto", ignoreCase = true)
+                    val colorAcento = if (esMoto) NaranjaRacing else AzulDeportivo
+
                     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                         if (uiState.mantenimientos.isEmpty()) {
-                            Text("No hay servicios registrados para este vehículo.", modifier = Modifier.weight(1f))
+                            Text("No se registran órdenes de servicio anteriores.", color = TextoGris, modifier = Modifier.weight(1f).align(Alignment.CenterHorizontally).padding(top = 40.dp))
                         } else {
                             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 items(uiState.mantenimientos) { mtto ->
-                                    Card(modifier = Modifier.fillMaxWidth(), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = CardDefaults.cardColors(containerColor = TarjetaGaráz)
+                                    ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
-                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                                Text(mtto.tipoServicio, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                                                Text("$${mtto.costo}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                                Text(mtto.tipoServicio, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = TextoBlanco, modifier = Modifier.weight(1f))
+                                                Surface(
+                                                    color = VerdeIndicador.copy(alpha = 0.15f),
+                                                    shape = RoundedCornerShape(8.dp)
+                                                ) {
+                                                    Text("$${mtto.costo}", color = VerdeIndicador, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.bodyMedium)
+                                                }
                                             }
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text("Fecha: ${mtto.fecha} | Kilometraje: ${mtto.kilometrajeEnServicio} km", style = MaterialTheme.typography.bodySmall)
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text("Fecha: ${mtto.fecha}", style = MaterialTheme.typography.bodySmall, color = TextoGris)
+                                                Text("${mtto.kilometrajeEnServicio} KM", style = MaterialTheme.typography.bodySmall, color = colorAcento, fontWeight = FontWeight.Bold)
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                        Button(onClick = onNavigateToAgregar, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                            Text("Registrar Nuevo Servicio")
+
+                        Button(
+                            onClick = onNavigateToAgregar,
+                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(54.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = colorAcento)
+                        ) {
+                            Text("REGISTRAR NUEVA ORDEN", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         }
                     }
                 }
@@ -184,7 +280,7 @@ fun HistorialScreen(
     }
 }
 
-// --- PANTALLA 4: AGREGAR SERVICIO ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgregarServicioScreen(
     vehiculoId: String,
@@ -198,43 +294,71 @@ fun AgregarServicioScreen(
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = { Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Registrar Servicio", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) } }
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("NUEVA ORDEN", fontWeight = FontWeight.Black, letterSpacing = 1.5.sp, color = TextoBlanco) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = FondoGaráz)
+            )
+        },
+        containerColor = FondoGaráz
     ) { paddingValues ->
         Column(
             modifier = Modifier.fillMaxSize().padding(paddingValues).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             OutlinedTextField(
                 value = tipoServicio,
                 onValueChange = { tipoServicio = it },
-                label = { Text("Tipo de Servicio (ej. Cambio de Aceite)") },
+                label = { Text("Descripción del Servicio") },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !cargando
+                enabled = !cargando,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AzulDeportivo,
+                    unfocusedBorderColor = TarjetaGaráz,
+                    focusedLabelColor = AzulDeportivo,
+                    unfocusedLabelColor = TextoGris
+                )
             )
 
             OutlinedTextField(
                 value = kilometraje,
                 onValueChange = { kilometraje = it },
-                label = { Text("Kilometraje actual (km)") },
+                label = { Text("Odómetro al ingresar (KM)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !cargando
+                enabled = !cargando,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AzulDeportivo,
+                    unfocusedBorderColor = TarjetaGaráz,
+                    focusedLabelColor = AzulDeportivo,
+                    unfocusedLabelColor = TextoGris
+                )
             )
 
             OutlinedTextField(
                 value = costo,
                 onValueChange = { costo = it },
-                label = { Text("Costo Total ($)") },
+                label = { Text("Costo del Mantenimiento ($)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !cargando
+                enabled = !cargando,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AzulDeportivo,
+                    unfocusedBorderColor = TarjetaGaráz,
+                    focusedLabelColor = AzulDeportivo,
+                    unfocusedLabelColor = TextoGris
+                )
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (cargando) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = AzulDeportivo)
             } else {
                 Button(
                     onClick = {
@@ -242,29 +366,28 @@ fun AgregarServicioScreen(
                             cargando = true
                             coroutineScope.launch {
                                 try {
-                                    // Creamos el objeto con ID aleatorio y la fecha de hoy
                                     val nuevoServicio = MantenimientoDto(
                                         id = UUID.randomUUID().toString(),
                                         vehiculoId = vehiculoId,
                                         tipoServicio = tipoServicio,
-                                        fecha = "2026-06-11", // Fecha fija de registro o puedes usar librerías de tiempo
+                                        fecha = "2026-06-11",
                                         kilometrajeEnServicio = kilometraje.toIntOrNull() ?: 0,
                                         costo = costo.toDoubleOrNull() ?: 0.0
                                     )
-                                    // Hacemos el POST a internet
                                     NetworkClient.retrofitInstance.agregarMantenimiento(nuevoServicio)
-                                    onNavigateBack() // Regresa al historial automáticamente
+                                    onNavigateBack()
                                 } catch (e: Exception) {
                                     cargando = false
-                                    // Si hay error de red, mantiene los datos para reintentar
                                 }
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = VerdeIndicador),
                     enabled = tipoServicio.isNotBlank() && kilometraje.isNotBlank() && costo.isNotBlank()
                 ) {
-                    Text("Guardar Registro en la API")
+                    Text("GUARDAR EN BASE DE DATOS", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 }
             }
         }
