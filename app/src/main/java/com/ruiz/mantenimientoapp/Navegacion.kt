@@ -7,13 +7,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.ruiz.mantenimientoapp.ui.screens.*
 import com.ruiz.mantenimientoapp.ui.viewmodel.GarageViewModel
+import com.ruiz.mantenimientoapp.ui.viewmodel.DetalleViewModel
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-
-    // Instanciamos el ViewModel aquí para controlar el Garaje
     val garageViewModel: GarageViewModel = viewModel()
+    val detalleViewModel: DetalleViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = "garage") {
 
@@ -31,27 +31,22 @@ fun AppNavigation() {
             val vehiculoId = backStackEntry.arguments?.getString("vehiculoId") ?: ""
             DetalleScreen(
                 vehiculoId = vehiculoId,
-                onNavigateToHistorial = { id ->
-                    navController.navigate("historial/$id")
-                }
+                uiState = detalleViewModel.detalleUiState,
+                onLoadData = { detalleViewModel.cargarDatosVehiculo(vehiculoId) },
+                onNavigateToHistorial = { navController.navigate("historial/$vehiculoId") }
             )
         }
 
-        composable("historial/{vehiculoId}") { backStackEntry ->
-            val vehiculoId = backStackEntry.arguments?.getString("vehiculoId") ?: ""
+        composable("historial/{vehiculoId}") {
             HistorialScreen(
-                vehiculoId = vehiculoId,
-                onNavigateToAgregar = {
-                    navController.navigate("agregar")
-                }
+                uiState = detalleViewModel.detalleUiState,
+                onNavigateToAgregar = { navController.navigate("agregar") }
             )
         }
 
         composable("agregar") {
             AgregarServicioScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }
