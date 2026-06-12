@@ -14,6 +14,18 @@ import androidx.compose.ui.unit.dp
 import com.ruiz.mantenimientoapp.data.network.VehiculoDto
 import com.ruiz.mantenimientoapp.ui.viewmodel.GarageUiState
 import com.ruiz.mantenimientoapp.ui.viewmodel.DetalleUiState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import com.ruiz.mantenimientoapp.data.network.MantenimientoDto
+import com.ruiz.mantenimientoapp.data.network.NetworkClient
+import kotlinx.coroutines.launch
+import java.util.UUID
+
 
 @Composable
 fun GarageScreen(
@@ -174,16 +186,87 @@ fun HistorialScreen(
 
 // --- PANTALLA 4: AGREGAR SERVICIO ---
 @Composable
-fun AgregarServicioScreen(onNavigateBack: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(text = "Pantalla 4: Nuevo Servicio", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onNavigateBack) {
-            Text("Guardar y Regresar")
+fun AgregarServicioScreen(
+    vehiculoId: String,
+    onNavigateBack: () -> Unit
+) {
+    var tipoServicio by remember { mutableStateOf("") }
+    var kilometraje by remember { mutableStateOf("") }
+    var costo by remember { mutableStateOf("") }
+    var cargando by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
+
+    Scaffold(
+        topBar = { Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Registrar Servicio", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) } }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(paddingValues).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            OutlinedTextField(
+                value = tipoServicio,
+                onValueChange = { tipoServicio = it },
+                label = { Text("Tipo de Servicio (ej. Cambio de Aceite)") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !cargando
+            )
+
+            OutlinedTextField(
+                value = kilometraje,
+                onValueChange = { kilometraje = it },
+                label = { Text("Kilometraje actual (km)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !cargando
+            )
+
+            OutlinedTextField(
+                value = costo,
+                onValueChange = { costo = it },
+                label = { Text("Costo Total ($)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !cargando
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            if (cargando) {
+                CircularProgressIndicator()
+            } else {
+                Button(
+                    onClick = {
+                        if (tipoServicio.isNotBlank() && kilometraje.isNotBlank() && costo.isNotBlank()) {
+                            cargando = true
+                            coroutineScope.launch {
+                                try {
+                                    // Creamos el objeto con ID aleatorio y la fecha de hoy
+                                    val nuevoServicio = MantenimientoDto(
+                                        id = UUID.randomUUID().toString(),
+                                        vehiculoId = vehiculoId,
+                                        tipoServicio = tipoServicio,
+                                        fecha = "2026-06-11", // Fecha fija de registro o puedes usar librerías de tiempo
+                                        kilometrajeEnServicio = kilometraje.toIntOrNull() ?: 0,
+                                        costo = costo.toDoubleOrNull() ?: 0.0
+                                    )
+                                    // Hacemos el POST a internet
+                                    NetworkClient.retrofitInstance.agregarMantenimiento(nuevoServicio)
+                                    onNavigateBack() // Regresa al historial automáticamente
+                                } catch (e: Exception) {
+                                    cargando = false
+                                    // Si hay error de red, mantiene los datos para reintentar
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = tipoServicio.isNotBlank() && kilometraje.isNotBlank() && costo.isNotBlank()
+                ) {
+                    Text("Guardar Registro en la API")
+                }
+            }
         }
     }
 }

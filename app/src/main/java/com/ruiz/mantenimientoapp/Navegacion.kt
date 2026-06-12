@@ -37,16 +37,24 @@ fun AppNavigation() {
             )
         }
 
-        composable("historial/{vehiculoId}") {
+        composable("historial/{vehiculoId}") { backStackEntry ->
+            val vehiculoId = backStackEntry.arguments?.getString("vehiculoId") ?: ""
             HistorialScreen(
                 uiState = detalleViewModel.detalleUiState,
-                onNavigateToAgregar = { navController.navigate("agregar") }
+                onNavigateToAgregar = { navController.navigate("agregar/$vehiculoId") }
             )
         }
 
-        composable("agregar") {
+        // --- ACTUALIZADO: Ahora recibe el ID del coche o moto a mantener ---
+        composable("agregar/{vehiculoId}") { backStackEntry ->
+            val vehiculoId = backStackEntry.arguments?.getString("vehiculoId") ?: ""
             AgregarServicioScreen(
-                onNavigateBack = { navController.popBackStack() }
+                vehiculoId = vehiculoId,
+                onNavigateBack = {
+                    // Al regresar, refrescamos la ficha técnica para traer el nuevo servicio de internet
+                    detalleViewModel.cargarDatosVehiculo(vehiculoId)
+                    navController.popBackStack()
+                }
             )
         }
     }
